@@ -15,20 +15,14 @@ app.use(cookieParser());
 //  Basic strategy
 require("./utils/auth/strategies/basic");
 
-const THIRTY_DAYS_IN_SEC = 2592000;
-const TWO_HOURS_IN_SEC = 7200;
-
-app.post("/auth/sign-in", async function (req, res, next) {
-
-  const { rememberMe } = req.body;
-
-  passport.authenticate("basic", function (error, data) {
+app.post("/auth/sign-in", async function(req, res, next) {
+  passport.authenticate("basic", function(error, data) {
     try {
       if (error || !data) {
         next(boom.unauthorized());
       }
 
-      req.login(data, { session: false }, async function (error) {
+      req.login(data, { session: false }, async function(error) {
         if (error) {
           next(error);
         }
@@ -37,8 +31,7 @@ app.post("/auth/sign-in", async function (req, res, next) {
 
         res.cookie("token", token, {
           httpOnly: !config.dev,
-          secure: !config.dev,
-          maxAge: rememberMe ? THIRTY_DAYS_IN_SEC : TWO_HOURS_IN_SEC
+          secure: !config.dev
         });
 
         res.status(200).json(user);
@@ -49,7 +42,7 @@ app.post("/auth/sign-in", async function (req, res, next) {
   })(req, res, next);
 });
 
-app.post("/auth/sign-up", async function (req, res, next) {
+app.post("/auth/sign-up", async function(req, res, next) {
   const { body: user } = req;
 
   try {
@@ -65,18 +58,51 @@ app.post("/auth/sign-up", async function (req, res, next) {
   }
 });
 
-app.get("/materials", async function (req, res, next) {
+app.get("/materials", async function(req, res, next) {});
 
+app.post("/user-materials", async function(req, res, next) {
+  try {
+    const { body: userMaterial } = req;
+    const { token } = req.cookies;
+
+    const { data, status } = await axios({
+      url: `${config.apiUrl}/api/v1/user-materials`,
+      headers: { Authorization: `Bearer ${token}` },
+      method: "post",
+      data: userMaterial
+    });
+
+    if (status !== 201) {
+      return next(boom.badImplementation());
+    }
+
+    res.status(201).json(data);
+  } catch (error) {
+    next(error);
+  }
 });
 
-app.post("/user-materials", async function (req, res, next) {
+app.delete("/user-materials/:userMaterialId", async function(req, res, next) {
+  try {
+    const { userMaterialId } = req.params;
+    const { token } = req.cookies;
 
+    const { data, status } = await axios({
+      url: `${config.apiUrl}/api/v1/user-materials/${userMaterialId}`,
+      headers: { Authorization: `Bearer ${token}` },
+      method: "delete"
+    });
+
+    if (status !== 200) {
+      return next(boom.badImplementation());
+    }
+
+    res.status(200).json(data);
+  } catch (error) {
+    next(error);
+  }
 });
 
-app.delete("/user-materials/:userMaterialId", async function (req, res, next) {
-
-});
-
-app.listen(config.port, function () {
+app.listen(config.port, function() {
   console.log(`Listening http://localhost:${config.port}`);
 });
