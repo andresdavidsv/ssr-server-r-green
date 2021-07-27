@@ -1,12 +1,13 @@
+const passport = require("passport");
 const axios = require("axios");
 const boom = require("@hapi/boom");
 const { OAuth2Strategy } = require("passport-oauth");
 
 const { config } = require("../../../config");
 
-const GOOGLE_AUTHORIZATION_URL = "https://accounts.google.com/o/oauth2/v2/auth";
-const GOOGLE_TOKEN_URL = "https://www.googleapis.com/oauth2/v4/token";
-const GOOGLE_USERINFO_URL = "https://www.googleapis.com/oauth2/v3/userinfo";
+const GOOGLE_AUTHORIZATION_URL = "https://accounts.google.com/o/oauth2/auth"
+const GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token"
+const GOOGLE_USERINFO_URL = 'https://www.googleapis.com/oauth2/v3/userinfo';
 
 const oAuth2Strategy = new OAuth2Strategy(
   {
@@ -16,12 +17,15 @@ const oAuth2Strategy = new OAuth2Strategy(
     clientSecret: config.googleClientSecret,
     callbackURL: "/auth/google-oauth/callback"
   },
-  async function(accessToken, refreshToken, profile, cb) {
+  async function (accessToken, refreshToken, profile, cb) {
+
     const { data, status } = await axios({
       url: `${config.apiUrl}/api/v1/auth/sign-provider`,
       method: "post",
       data: {
-        name: profile.name,
+        first_name: profile.name,
+        last_name: profile.family_name,
+        user_name: profile.given_name,
         email: profile.email,
         password: profile.id,
         apiKeyToken: config.apiKeyToken
@@ -36,18 +40,20 @@ const oAuth2Strategy = new OAuth2Strategy(
   }
 );
 
-oAuth2Strategy.userProfile = function(accessToken, done) {
+oAuth2Strategy.userProfile = function (accessToken, done) {
   this._oauth2.get(GOOGLE_USERINFO_URL, accessToken, (err, body) => {
     if (err) {
       return done(err);
     }
 
     try {
-      const { sub, name, email } = JSON.parse(body);
+      const { sub, first_name, last_name, user_name, email } = JSON.parse(body);
 
       const profile = {
         id: sub,
-        name,
+        first_name,
+        last_name,
+        user_name,
         email
       };
 
